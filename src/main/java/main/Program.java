@@ -7,7 +7,7 @@ import java.io.IOException;
 public class Program {
 	public static void main(String[] args) {
 		
-		NovaExample example = new NovaExample();
+		NovaClient example = new NovaClient();
 		
 		try {
 			
