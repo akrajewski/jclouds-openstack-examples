@@ -7,19 +7,15 @@ import java.io.IOException;
 public class Program {
 	public static void main(String[] args) {
 		
-		NovaClient example = new NovaClient();
+		NovaClient novaClient = new NovaClient();
 		
 		try {
-			
-			example.listServers();
-			example.stopServers();
-			example.createServer();
-			example.listServers();
+			novaClient.createServer();
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		} finally {
 			try {
-				example.close();
+				novaClient.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
