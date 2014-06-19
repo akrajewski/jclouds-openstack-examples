@@ -18,7 +18,9 @@ public class Program {
 			//novaClient.stopServers();
 			//novaClient.createServer();
 			novaClient.listFlavors();
-			new WordPressFrontEnd().spawn();
+			novaClient.listServers();
+			novaClient.listFloatingIPs();
+			//new WordPressFrontEnd().spawn();
 			//neutronClient.listNetworks();
 		} catch (Exception ex) {
 			ex.printStackTrace();

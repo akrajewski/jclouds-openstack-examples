@@ -65,8 +65,19 @@ public class NovaClient {
 
 		for (Server server : serverApi.listInDetail().concat()) {
 			System.out.println(" " + server);
+			
 		}
 
+	}
+	
+	public void listFloatingIPs() {
+		FloatingIPApi api = novaApi.getFloatingIPExtensionForZone(zone).get();
+		
+		log.info("Listing floating ips = {");
+		for (FloatingIP ip : api.list()) {
+			log.info("\t" + ip);
+		}
+		log.info("}");
 	}
 
 	public void stopServers() {
@@ -115,16 +126,16 @@ public class NovaClient {
 		String image = "Ubuntu Server 12.04";
 		String flavor = "m1.small";
 		String network = "demo-net";
-		String keyPair = "Ubuntu";
+		String keyPair = "WordPress";
 		
 		createServer(name, image, flavor, network, keyPair, userData);
 	}
 
-	public void createServer(String serverName, String imageName, String flavorName, String networkName, String keyPairName, byte[] userData) {
+	public String createServer(String serverName, String imageName, String flavorName, String networkName, String keyPairName, byte[] userData) {
 		
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(serverName), "serverName should not be null nor empty");
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(imageName), "imageName should not be null nor empty");
-		Preconditions.checkArgument(!Strings.isNullOrEmpty(flavorName), "flavorName should not be nll nor empty");
+		Preconditions.checkArgument(!Strings.isNullOrEmpty(flavorName), "flavorName should not be null nor empty");
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(networkName), "networkName should not be null nor empty");
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(keyPairName), "keyPairName should not be null nor empty");
 		
@@ -168,6 +179,12 @@ public class NovaClient {
 		}
 		
 		assignFloatingIp(server);
+		
+		return server.getId();
+	}
+	
+	public void getFixedIpForServer(String serverId) {
+		ServerApi serverApi = novaApi.getServerApiForZone(zone);
 	}
 	
 	public void assignFloatingIp(Server server) {

@@ -7,6 +7,8 @@ public class WordPressBackend {
 	
 	private static WordPressBackend instance;
 	
+	private String serverId;
+	
 	private WordPressBackend() {
 		
 	}
@@ -17,6 +19,8 @@ public class WordPressBackend {
 		}
 		return instance;
 	}
+	
+	
 	
 	
 }
