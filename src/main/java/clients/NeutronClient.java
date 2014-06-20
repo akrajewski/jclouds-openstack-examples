@@ -68,7 +68,11 @@ public class NeutronClient {
 		log.info("}");
 	}
 
-	public void close() throws IOException {
-		Closeables.close(neutronApi, true);
+	public void close() {
+		try {
+			Closeables.close(neutronApi, true);
+		} catch (IOException ex) {
+			log.error("Error while closing neutronApi", ex);
+		}
 	}
 }

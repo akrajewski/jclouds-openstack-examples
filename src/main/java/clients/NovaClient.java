@@ -1,6 +1,7 @@
 package clients;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -10,6 +11,7 @@ import org.apache.log4j.Logger;
 import org.jclouds.ContextBuilder;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.openstack.nova.v2_0.NovaApi;
+import org.jclouds.openstack.nova.v2_0.domain.Address;
 import org.jclouds.openstack.nova.v2_0.domain.Flavor;
 import org.jclouds.openstack.nova.v2_0.domain.FloatingIP;
 import org.jclouds.openstack.nova.v2_0.domain.Image;
@@ -24,6 +26,7 @@ import org.jclouds.openstack.nova.v2_0.options.CreateServerOptions;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closeables;
 import com.google.inject.Module;
@@ -35,26 +38,21 @@ public class NovaClient {
 	private String zone;
 
 	public NovaClient() {
-		try {
-			Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
-			
-			ContextBuilder builder = ContextBuilder.newBuilder("openstack-nova");
-			
-			novaApi = builder.endpoint("http://os-ctrl:5000/v2.0/")
-					.credentials(Config.TENANT + ":" + Config.USER, Config.PASSWORD)
-					.modules(modules)
-					.buildApi(NovaApi.class);
-			
-			Set<String> zones = novaApi.getConfiguredZones();
-			if (zones.size() == 1) {
-				zone = zones.stream().findFirst().get();
-				log.info("Using zone: " + zone);
-			} else {
-				log.warn("Unexpected event - zero or more than one configured Openstack zone found.");
-			}
-
-		} catch (Exception e) {
-			log.error("Exception while building NovaApi", e);
+		Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
+		
+		ContextBuilder builder = ContextBuilder.newBuilder("openstack-nova");
+		
+		novaApi = builder.endpoint("http://os-ctrl:5000/v2.0/")
+				.credentials(Config.TENANT + ":" + Config.USER, Config.PASSWORD)
+				.modules(modules)
+				.buildApi(NovaApi.class);
+		
+		Set<String> zones = novaApi.getConfiguredZones();
+		if (zones.size() == 1) {
+			zone = zones.stream().findFirst().get();
+			log.info("Using zone: " + zone);
+		} else {
+			log.warn("Unexpected event - zero or more than one configured Openstack zone found.");
 		}
 	}
 
@@ -78,6 +76,54 @@ public class NovaClient {
 			log.info("\t" + ip);
 		}
 		log.info("}");
+	}
+	
+	public Optional<Address> getPrivateAddress(String serverId, String networkName) {
+		ServerApi serverApi = novaApi.getServerApiForZone(zone);
+		
+		Server server = serverApi.get(serverId);
+		
+		Collection<Address> addresses = server.getAddresses().get(networkName);
+		
+		if (addresses == null) {
+			log.warn("No addresses found for server " + serverId + " Probably trying to retrieve before server networking was completed");
+			return Optional.absent();
+		} else if (addresses.size() == 1) {
+			return Optional.of(addresses.stream().findFirst().get());
+		} else { // two addresses
+			FloatingIPApi floatingIPApi = novaApi.getFloatingIPExtensionForZone(zone).get();
+			
+			Optional<? extends FloatingIP> publicIP = 
+					floatingIPApi.list()
+						.filter(floatingIP -> addresses.contains(Address.createV4(floatingIP.getIp())))
+						.first();
+			
+			return publicIP.isPresent() ?
+					Optional.of(Address.createV4(publicIP.get().getFixedIp()))
+					: Optional.absent();
+		}
+	}
+	
+	public Optional<Address> getPublicAddress(String serverId, String networkName) {
+		
+		ServerApi serverApi = novaApi.getServerApiForZone(zone);
+		
+		Server server = serverApi.get(serverId);
+		
+		Collection<Address> addresses = server.getAddresses().get(networkName);
+		
+		Optional<Address> fixed = getPrivateAddress(serverId, networkName);
+		
+		if (!fixed.isPresent()) {
+			log.warn("Trying to obtain public IP address before server networking was completed");
+			return Optional.absent();
+		}
+		
+		java.util.Optional<Address> publicIP = addresses.stream().filter(addr -> !addr.equals(fixed.get())).findFirst();
+		
+		return publicIP.isPresent() ?
+				Optional.of(publicIP.get())
+				: Optional.absent();
 	}
 
 	public void stopServers() {
@@ -115,11 +161,11 @@ public class NovaClient {
 				.firstMatch(flv -> flv.getName().equals(flavorName));
 	}
 	
-	public void createServer(String name) {
-		createServer(name, null);
+	public String createServer(String name) {
+		return createServer(name, null);
 	}
 	
-	public void createServer(String name, byte[] userData) {
+	public String createServer(String name, byte[] userData) {
 		
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(name), "Server name should not be null or empty");
 		
@@ -128,7 +174,7 @@ public class NovaClient {
 		String network = "demo-net";
 		String keyPair = "WordPress";
 		
-		createServer(name, image, flavor, network, keyPair, userData);
+		return createServer(name, image, flavor, network, keyPair, userData);
 	}
 
 	public String createServer(String serverName, String imageName, String flavorName, String networkName, String keyPairName, byte[] userData) {
@@ -198,7 +244,11 @@ public class NovaClient {
 		}
 	}
 
-	public void close() throws IOException {
-		Closeables.close(novaApi, true);
+	public void close() {
+		try {
+			Closeables.close(novaApi, true);
+		} catch (IOException ex) {
+			log.error("Error while closing NovaApi");
+		}
 	}
 }
