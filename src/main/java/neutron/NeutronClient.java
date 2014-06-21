@@ -1,4 +1,4 @@
-package clients;
+package neutron;
 
 import com.google.common.base.Optional;
 
@@ -13,6 +13,8 @@ import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 import org.jclouds.openstack.neutron.v2_0.NeutronApi;
 import org.jclouds.openstack.neutron.v2_0.domain.Network;
 import org.jclouds.openstack.neutron.v2_0.features.NetworkApi;
+import org.jclouds.openstack.neutron.v2_0.options.CreateNetworkOptions;
+import org.jclouds.openstack.neutron.v2_0.options.CreateNetworkOptions.Builder;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closeables;
@@ -66,6 +68,10 @@ public class NeutronClient {
 			log.info("\t" + net);
 		}
 		log.info("}");
+	}
+	
+	public void createNetwork() {
+		
 	}
 
 	public void close() {

@@ -2,10 +2,10 @@ package main;
 
 import java.io.IOException;
 
-import wordpress.WordPressFrontEnd;
-import wordpress.WordPressOrchestrator;
-import clients.NeutronClient;
-import clients.NovaClient;
+import neutron.NeutronClient;
+import nova.NovaClient;
+import wordpress.Frontend;
+import wordpress.Orchestrator;
 
 
 
@@ -16,7 +16,7 @@ public class Program {
 		NeutronClient neutronClient = new NeutronClient();
 		
 		try {
-			WordPressOrchestrator orchestrator = new WordPressOrchestrator(2);
+			Orchestrator orchestrator = new Orchestrator(2);
 			orchestrator.orchestrate();
 			
 			//novaClient.stopServers();

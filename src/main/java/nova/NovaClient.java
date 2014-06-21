@@ -1,4 +1,4 @@
-package clients;
+package nova;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import main.Config;
+import neutron.NeutronClient;
 
 import org.apache.log4j.Logger;
 import org.jclouds.ContextBuilder;
@@ -32,11 +33,11 @@ import com.google.common.io.Closeables;
 import com.google.inject.Module;
 
 public class NovaClient {
-	private static Logger log = Logger.getLogger(Logger.class);
+	private static Logger log = Logger.getLogger(NovaClient.class);
 
 	private NovaApi novaApi;
 	private String zone;
-
+	
 	public NovaClient() {
 		Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
 		
@@ -55,26 +56,22 @@ public class NovaClient {
 			log.warn("Unexpected event - zero or more than one configured Openstack zone found.");
 		}
 	}
-
+	
 	public void listServers() {
 		ServerApi serverApi = novaApi.getServerApiForZone(zone);
 
-		System.out.println("Listing servers =" + zone);
-
+		log.info("Listing servers = {" + zone);
 		for (Server server : serverApi.listInDetail().concat()) {
-			System.out.println(" " + server);
-			
+			log.info(" " + server);
 		}
-
+		log.info("}");
 	}
 	
 	public void listFloatingIPs() {
 		FloatingIPApi api = novaApi.getFloatingIPExtensionForZone(zone).get();
 		
-		log.info("Listing floating ips = {");
-		for (FloatingIP ip : api.list()) {
-			log.info("\t" + ip);
-		}
+		log.info("Listing floating IPs = {");
+		api.list().forEach(ip -> log.info("\t" + ip));
 		log.info("}");
 	}
 	
@@ -129,11 +126,12 @@ public class NovaClient {
 	public void stopServers() {
 		ServerApi serverApi = novaApi.getServerApiForZone(zone);
 
-		for (Server server : serverApi.listInDetail().concat()) {
-			log.info("Shutting down... " + server);
-			serverApi.delete(server.getId());
-		}
-		
+		serverApi.listInDetail()
+			.concat()
+			.forEach(server -> { 
+				log.info("Shutting down... " + server); serverApi.delete(server.getId()); 
+			});
+
 		log.info("Servers successfully stopped!");
 	}
 	
@@ -169,6 +167,7 @@ public class NovaClient {
 		
 		Preconditions.checkArgument(!Strings.isNullOrEmpty(name), "Server name should not be null or empty");
 		
+		//Defaults:
 		String image = "Ubuntu Server 12.04";
 		String flavor = "m1.small";
 		String network = "demo-net";
@@ -229,13 +228,16 @@ public class NovaClient {
 		return server.getId();
 	}
 	
-	public void getFixedIpForServer(String serverId) {
-		ServerApi serverApi = novaApi.getServerApiForZone(zone);
-	}
-	
 	public void assignFloatingIp(Server server) {
 		FloatingIPApi floatingIPApi = novaApi.getFloatingIPExtensionForZone(zone).get();
-		FloatingIP floatingIP = floatingIPApi.allocateFromPool("ext-net");
+		
+		FluentIterable<? extends FloatingIP> floatingIPs = floatingIPApi.list(); 
+		
+		Optional<? extends FloatingIP> freeIP = floatingIPs
+				.filter(ip -> ip.getInstanceId() == null)
+				.first();
+		
+		FloatingIP floatingIP = freeIP.isPresent() ? freeIP.get() : floatingIPApi.allocateFromPool("ext-net");
 		try {
 			floatingIPApi.addToServer(floatingIP.getIp(), server.getId());
 		} catch (Exception ex) {
