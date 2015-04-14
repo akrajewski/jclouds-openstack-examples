@@ -20,4 +20,4 @@ Openstack auth params
 
 From project root run:
 
-    $ java -cp java -cp "target/*:target/lib/*" main.Program
+    $ java -cp "target/*:target/lib/*" main.Program
