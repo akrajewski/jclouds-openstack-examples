@@ -43,7 +43,7 @@ public class NovaClient {
 		
 		ContextBuilder builder = ContextBuilder.newBuilder("openstack-nova");
 		
-		novaApi = builder.endpoint("http://os-ctrl:5000/v2.0/")
+		novaApi = builder.endpoint(Config.KEYSTONE_ENDPOINT)
 				.credentials(Config.TENANT + ":" + Config.USER, Config.PASSWORD)
 				.modules(modules)
 				.buildApi(NovaApi.class);

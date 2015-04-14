@@ -33,7 +33,7 @@ public class NeutronClient {
 			ContextBuilder builder = ContextBuilder.newBuilder("openstack-neutron");
 
 			neutronApi = builder
-					.endpoint("http://os-ctrl:5000/v2.0/")
+					.endpoint(Config.KEYSTONE_ENDPOINT)
 					.credentials(Config.TENANT + ":" + Config.USER, Config.PASSWORD).modules(modules)
 					.buildApi(NeutronApi.class);
 
